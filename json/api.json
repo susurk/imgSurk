@@ -1,0 +1,5 @@
+window.__API_CONFIG__ = {
+  "version": "4.0.6",
+  "url": "http://s.sr9.top/update",
+  "notice": "更多点击<a href=\"https://sr9.cn\" target=\"_blank\" rel=\"noopener\">传送门</a> 有问题点击<a href=\"https://qm.qq.com/q/54BVXKulxS\">传送门</a>联系"
+};
