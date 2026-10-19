@@ -128,6 +128,11 @@ const html = `<!DOCTYPE html>
     --accent: #38bdf8;
   }
   * { box-sizing: border-box; }
+  html {
+    /* 固定滚动条槽位，避免搜索结果多少导致页面宽度抖动 */
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
   body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -149,13 +154,16 @@ const html = `<!DOCTYPE html>
   .stats {
     display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
     font-size: .85rem; color: var(--muted); margin-bottom: .75rem;
+    min-height: 1.8rem;
   }
   .stats strong { color: var(--text); font-weight: 600; }
   .toggle-btn {
     margin-left: auto;
+    min-width: 5.5rem;              /* 固定宽度，文字切换不引起布局偏移 */
     padding: .35rem .7rem; border-radius: 6px;
     border: 1px solid var(--border); background: #0b1220;
     color: var(--text); font-size: .8rem; cursor: pointer;
+    text-align: center;
   }
   .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
   .search {
@@ -195,6 +203,7 @@ const html = `<!DOCTYPE html>
     font-size: .9rem;
   }
   li:hover { background: rgba(56, 189, 248, 0.05); }
+  li.hidden { display: none; }
   .ext-tag {
     flex-shrink: 0; font-size: .66rem; font-weight: 700;
     text-transform: uppercase; padding: .15rem .4rem;
@@ -232,16 +241,17 @@ ${groupsHtml}  </div>
   <div class="empty" id="empty">没有匹配的文件</div>
 </main>
 <script>
+  var search = document.getElementById('search');
+  var empty = document.getElementById('empty');
+  var toggleBtn = document.getElementById('toggleAll');
+  var allGroups = Array.prototype.slice.call(document.querySelectorAll('.dir-group'));
+
   document.querySelectorAll('.dir-header').forEach(function (h) {
     h.addEventListener('click', function () {
       h.parentElement.classList.toggle('collapsed');
       updateToggleText();
     });
   });
-
-  var search = document.getElementById('search');
-  var empty = document.getElementById('empty');
-  var toggleBtn = document.getElementById('toggleAll');
 
   function updateToggleText() {
     var anyExpanded = document.querySelector('.dir-group:not(.collapsed)');
@@ -250,7 +260,7 @@ ${groupsHtml}  </div>
 
   toggleBtn.addEventListener('click', function () {
     var anyExpanded = document.querySelector('.dir-group:not(.collapsed)');
-    document.querySelectorAll('.dir-group').forEach(function (g) {
+    allGroups.forEach(function (g) {
       if (anyExpanded) {
         g.classList.add('collapsed');
       } else {
@@ -260,31 +270,40 @@ ${groupsHtml}  </div>
     updateToggleText();
   });
 
-  search.addEventListener('input', function () {
+  // 防抖：避免每次按键都重排整个列表
+  function debounce(fn, wait) {
+    var t;
+    return function () {
+      var args = arguments, ctx = this;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(ctx, args); }, wait);
+    };
+  }
+
+  var applySearch = debounce(function () {
     var q = search.value.trim().toLowerCase();
     var anyVisible = false;
 
-    document.querySelectorAll('.dir-group').forEach(function (group) {
+    allGroups.forEach(function (group) {
       var visible = 0;
       group.querySelectorAll('li').forEach(function (li) {
         var match = !q || li.dataset.name.indexOf(q) !== -1;
-        li.style.display = match ? '' : 'none';
+        li.classList.toggle('hidden', !match);
         if (match) visible++;
       });
       group.style.display = visible ? '' : 'none';
       if (visible) {
         anyVisible = true;
-        if (q) {
-          group.classList.remove('collapsed');
-        } else {
-          group.classList.add('collapsed');
-        }
+        // 搜索时展开匹配组，清空搜索后恢复默认收纳
+        group.classList.toggle('collapsed', !q);
       }
     });
 
     empty.style.display = anyVisible ? 'none' : 'block';
     updateToggleText();
-  });
+  }, 120);
+
+  search.addEventListener('input', applySearch);
 </script>
 </body>
 </html>`;
