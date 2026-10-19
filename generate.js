@@ -36,26 +36,22 @@ function collectFiles(dir, basePath = '') {
 
 const files = collectFiles(ROOT);
 
-// 按目录分组
 const groups = new Map();
 for (const f of files) {
   if (!groups.has(f.dir)) groups.set(f.dir, []);
   groups.get(f.dir).push(f);
 }
 
-// 目录排序：根目录优先，其余按字母
 const sortedDirs = [...groups.keys()].sort((a, b) => {
   if (a === '/') return -1;
   if (b === '/') return 1;
   return a.localeCompare(b);
 });
 
-// 每个目录内文件按名称排序
 for (const d of sortedDirs) {
   groups.get(d).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// 统计
 const totalFiles = files.length;
 const totalSize = files.reduce((s, f) => s + f.size, 0);
 const totalDirs = groups.size;
@@ -92,7 +88,7 @@ function extColor(ext) {
 function renderGroup(dir, items) {
   const label = dir === '/' ? '根目录' : dir;
   const groupSize = items.reduce((s, f) => s + f.size, 0);
-  let html = `<section class="dir-group" data-dir="${esc(dir)}">
+  let html = `<section class="dir-group collapsed" data-dir="${esc(dir)}">
   <div class="dir-header">
     <div class="dir-title"><span class="chevron">▼</span>${esc(label)}</div>
     <div class="dir-count">${items.length} 个文件 · ${fmtSize(groupSize)}</div>
@@ -151,10 +147,17 @@ const html = `<!DOCTYPE html>
   .header-inner { max-width: 960px; margin: 0 auto; }
   h1 { font-size: 1.35rem; margin: 0 0 .5rem; }
   .stats {
-    display: flex; gap: 1rem; flex-wrap: wrap;
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
     font-size: .85rem; color: var(--muted); margin-bottom: .75rem;
   }
   .stats strong { color: var(--text); font-weight: 600; }
+  .toggle-btn {
+    margin-left: auto;
+    padding: .35rem .7rem; border-radius: 6px;
+    border: 1px solid var(--border); background: #0b1220;
+    color: var(--text); font-size: .8rem; cursor: pointer;
+  }
+  .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
   .search {
     width: 100%; padding: .6rem .8rem;
     border-radius: 8px; border: 1px solid var(--border);
@@ -206,6 +209,7 @@ const html = `<!DOCTYPE html>
   @media (max-width: 600px) {
     .file-size { display: none; }
     li { padding: .55rem .75rem; }
+    .toggle-btn { margin-left: 0; }
   }
 </style>
 </head>
@@ -217,6 +221,7 @@ const html = `<!DOCTYPE html>
       <span>共 <strong>${totalFiles}</strong> 个文件</span>
       <span><strong>${totalDirs}</strong> 个目录</span>
       <span>总计 <strong>${fmtSize(totalSize)}</strong></span>
+      <button id="toggleAll" class="toggle-btn">全部展开</button>
     </div>
     <input id="search" class="search" type="search" placeholder="搜索文件名或路径..." autocomplete="off">
   </div>
@@ -230,11 +235,30 @@ ${groupsHtml}  </div>
   document.querySelectorAll('.dir-header').forEach(function (h) {
     h.addEventListener('click', function () {
       h.parentElement.classList.toggle('collapsed');
+      updateToggleText();
     });
   });
 
   var search = document.getElementById('search');
   var empty = document.getElementById('empty');
+  var toggleBtn = document.getElementById('toggleAll');
+
+  function updateToggleText() {
+    var anyExpanded = document.querySelector('.dir-group:not(.collapsed)');
+    toggleBtn.textContent = anyExpanded ? '全部折叠' : '全部展开';
+  }
+
+  toggleBtn.addEventListener('click', function () {
+    var anyExpanded = document.querySelector('.dir-group:not(.collapsed)');
+    document.querySelectorAll('.dir-group').forEach(function (g) {
+      if (anyExpanded) {
+        g.classList.add('collapsed');
+      } else {
+        g.classList.remove('collapsed');
+      }
+    });
+    updateToggleText();
+  });
 
   search.addEventListener('input', function () {
     var q = search.value.trim().toLowerCase();
@@ -250,11 +274,16 @@ ${groupsHtml}  </div>
       group.style.display = visible ? '' : 'none';
       if (visible) {
         anyVisible = true;
-        if (q) group.classList.remove('collapsed');
+        if (q) {
+          group.classList.remove('collapsed');
+        } else {
+          group.classList.add('collapsed');
+        }
       }
     });
 
     empty.style.display = anyVisible ? 'none' : 'block';
+    updateToggleText();
   });
 </script>
 </body>
